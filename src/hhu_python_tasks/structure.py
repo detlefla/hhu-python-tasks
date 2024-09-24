@@ -47,7 +47,7 @@ class ProjectInfo:
     target: RemoteHostInfo | None = None
     python_version: str | None = None
     runserver_port: int | None = None
-    wheelhouse: Path | None = Path("../wheels")
+    wheelhouse: Path | None = None
     backup: dict[str, BackupInfo] = Factory(dict)
     packages: list[SubPackageInfo] = Factory(list)
     editor_options: dict[str, list[str]] = Factory(dict)
@@ -64,6 +64,13 @@ class ProjectInfo:
             self.runserver_port = 8000 + self.project_id
         if self.wheelhouse is None:
             self.wheelhouse = get_pyproject_path() / "wheels"
+        # cattrs doesn't deliver Path instances??
+        if isinstance(self.src_path, str):
+            self.src_path = Path(self.src_path)
+        if isinstance(self.private_files, str):
+            self.private_files = Path(self.private_files)
+        if isinstance(self.wheelhouse, str):
+            self.wheelhouse = Path(self.wheelhouse)
 
 
 def get_options(ctx: context.Context) -> ProjectInfo:
