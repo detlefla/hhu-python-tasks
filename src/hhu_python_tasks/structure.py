@@ -7,6 +7,8 @@ import logging
 from pathlib import Path
 import sys
 
+from .utils import get_pyproject_path
+
 
 logger = logging.getLogger(__file__)
 logger.setLevel(logging.INFO)
@@ -40,6 +42,7 @@ class ProjectInfo:
     project_name: str
     project_id: int = 99
     src_path: Path | None = None
+    private_files: Path | None = None
     package_name: str | None = None
     target: RemoteHostInfo | None = None
     python_version: str | None = None
@@ -59,10 +62,13 @@ class ProjectInfo:
             self.python_version = f"{sys.version_info.major}.{sys.version_info.minor}"
         if self.runserver_port is None and self.project_id:
             self.runserver_port = 8000 + self.project_id
+        if self.wheelhouse is None:
+            self.wheelhouse = get_pyproject_path() / "wheels"
 
 
 def get_options(ctx: context.Context) -> ProjectInfo:
     """Extracts project information from invoke context."""
+    pi: ProjectInfo
     if "config_file" in ctx:
         filename = Path(ctx["config_file"]).expanduser()
         base = get_pyproject_path()
@@ -70,7 +76,7 @@ def get_options(ctx: context.Context) -> ProjectInfo:
             base = Path(".")
         filename = (base / filename).absolute()
         yaml_converter = make_yaml_converter()
-        pi = yaml_converter.loads(open(filename), ProjectInfo)
+        pi = yaml_converter.loads(filename.read_text(), ProjectInfo)
         logger.info(f"reading configuration data from {filename}")
     else:
         ctx_info = {a.name: ctx[a.name]
@@ -78,84 +84,6 @@ def get_options(ctx: context.Context) -> ProjectInfo:
         pi = ProjectInfo(**ctx_info)
     ctx["hhu_options"] = pi
     return pi
-
-
-def get_pyproject_path(start: str | Path = ".") -> Path | None:
-    """Tries to locate a pyproject.toml file and returns its path, None if not found."""
-    p = Path(start).absolute()
-    while True:
-        if (p / "pyproject.toml").exists():
-            return p
-        if p == p.parent:
-            break
-        p = p.parent
-    return None
-
-
-def to_snake_case(name: str) -> str:
-    """Converts kebab-case name to snake case."""
-    return name.replace("-", "_")
-
-
-class Result:
-    """Fake fabric.Connection result object"""
-    def __init__(self, command: str, connection: Connection):
-        self.command = command
-        self.connection = connection
-        self.ok = True
-        self.stdout = ""
-        self.stderr = ""
-
-
-def run(ctx: context.Context,
-        *args,
-        dry_run: bool = False,
-        **kwargs):
-    """Runs a command on localhost."""
-    if ctx["run"]["dry"] or dry_run:
-        print("would run", repr(args), repr(kwargs))
-    else:
-        if ctx["run"]["echo"]:
-            print("running:", repr(args), repr(kwargs))
-        ctx.run(*args, **kwargs)
-
-
-def remote(ctx: context.Context,
-        command: str,
-        *,
-        host: str | None = None,
-        user: str | None = None,
-        run_always: bool = False,
-        hide: bool = False,
-        dry_run: bool = False,
-        ) -> Result:
-    """Runs a command on the remote host."""
-    dry_run = dry_run or ctx["run"]["dry"]
-    options = ctx["hhu_options"]
-    if options.target is None:
-        print("[red]no target host configured")
-        raise ValueError("no target host")
-    if host is None:
-        host = options.target.hostname
-    conn = Connection(host)
-    sshconf = Path("~/.ssh/config").expanduser().absolute()
-    conn.ssh_config_path=str(sshconf)
-    if user is None:
-        user = options.target.user
-    if user is not None:
-        conn.user = user
-    if dry_run:
-        if run_always:
-            print(f"will run on {host}: {command}")
-            result = conn.run(command, hide=hide)
-        else:
-            print(f"would run on {host}: {command}")
-            result = Result(command=command, connection=conn)
-    else:
-        if ctx["run"]["echo"]:
-            print(f"{conn.user}@{conn.host} running {command}")
-        result = conn.run(command, hide=hide)
-    return result
 
 
 ####################################################################################################

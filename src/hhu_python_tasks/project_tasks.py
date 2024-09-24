@@ -15,136 +15,11 @@ from typing import Any, Optional
 import uuid_utils as uuid
 import yaml
 
-from .structure import get_options, remote, run
+from .structure import get_options
+from .utils import *
 
 logger = logging.getLogger(__file__)
 logger.setLevel(logging.INFO)
-
-# XXX
-PROJECT = "hhunet"
-PROJECT_ID = 22
-ROOT_DIR = Path(__file__).parent
-SUB_DIR = "hhunet"
-PACKAGE = "django-hhunet"
-
-
-def _get_versionfile_path() -> Path:
-    return ROOT_DIR / SUB_DIR / "VERSION"
-
-
-def _get_version() -> str:
-    return _get_versionfile_path().read_text().strip()
-
-
-def _get_wheelname() -> str:
-    version = _get_version()
-    try:
-        package_name = PACKAGE
-    except NameError:
-        package_name = PROJECT
-    package_name = package_name.replace("-", "_")
-    return f"{package_name}-{version}-py3-none-any.whl"
-
-
-def _get_conf(ctx: context.Context, name: str, default: Any = None) -> Any:
-    """Returns configuration option value."""
-    if name in ctx.config:
-        value = ctx.config[name]
-    else:
-        if "config_options" not in ctx:
-            p = Path(f"~/.local/hhu/{PROJECT}.yaml").expanduser()
-            if p.exists():
-                with open(p) as f:
-                    conf = yaml.safe_load(f)
-            else:
-                conf = {}
-            ctx["config_options"] = conf
-        value = ctx["config_options"].get(name, default)
-    return value
-
-
-def set_editable_paths(ctx: context.Context) -> None:
-    """Exports subpackage locations to the environment."""
-    dry_run = ctx["run"]["dry"]
-    packages = ctx.get("packages", {})
-    for name, info in packages.items():
-        env_key = name.upper()
-        env_value = info["workdir"]
-        if dry_run:
-            print(f"would export {env_key}={env_value}")
-        else:
-            os.environ[env_key] = env_value
-
-
-def get_local_paths(ctx: context.Context,
-        *,
-        did: str | None = None,
-        root: Path | None = None,
-        base: Path | None = None,
-        ) -> SN:
-    """Determines paths to deployment-specific local directories and files."""
-    if root is None:
-        root = Path(__file__).parent
-    if base is None:
-        base = Path(ctx.get("project_base", root))
-    local = SN(
-            temp_venv = root / "deploy" / "venv",
-            wheelhouse = base / "wheels",
-            req_prod_in = root / "requirements" / "prod.in",
-            req_prod_txt = root / "requirements" / "prod.txt",
-            base_private = base / "private",
-            private = root / "private",
-            )
-    if did is not None:
-        local.deploy = root / "deploy" / did
-        local.req_prod = root / "deploy" / did / f"requirements.txt"
-        local.wheels = root / "deploy" / did / f"wheels"
-    return local
-
-
-def get_paths(ctx: context.Context,
-        *,
-        did: str,
-        root: Path | None = None,
-        ) -> SN:
-    """Determines paths to deployment-specific remote and local directories and files."""
-    base = Path(ctx.get("target_path", Path("/home") / PROJECT))
-    paths = SN(
-            target = SN(
-                base = base,
-                project = base / "django",
-                ext_res = base / "django" / "static_external" / "external",
-                logs = base / "logs",
-                venvs = base / "venvs",
-                venv = base / "venvs" / f"v-{did}",
-                venv_act = base / "venvs" / "active",
-                wheels = base / "wheels",
-                wheelhouse = base / "wheels" / f"wh-{did}",
-                wheels_act = base / "wheels" / "active",
-                reqs = base / "requirements",
-                req_prod = base / "requirements" / f"req-{did}.txt",
-                )
-            )
-    paths.local = get_local_paths(ctx, did=did, root=root)
-    return paths
-
-
-################################################################################
-###
-### building and deploying
-
-
-def check_branch(branch: str) -> None:
-    retcd, output = subprocess.getstatusoutput("git branch")
-    if retcd:
-        print(f"[#f0c000]not inside a git tree – branch not checked")
-    else:
-        # we are inside a git tree
-        for branch_line in output.splitlines():
-            indicator, branch_name = branch_line.split(None, 1)
-            if indicator == "*" and branch_name != branch:
-                print(f"[red]currently on git branch “{branch_name}” instead of “{branch}”")
-                raise ValueError("wrong branch")
 
 
 ################################################################################
@@ -222,42 +97,6 @@ def clean_backups(ctx, location="server"):
 
 
 ################################################################################
-###
-### requirements / venv management
-
-
-@task(help={
-        "mode": "select requirements file, e.g. \"prod\" for requirements/prod.txt and prod.in; default: \"dev\"",
-        "hashes": "whether the txt file should contain package hashes; default: False",
-        "upgrade": "comma-separated list of packages to upgrade",
-        "use-wheeldir": "get packages from the wheelhouse directory",
-        })
-def upgrade_requirements(ctx, mode="dev", hashes=False, upgrade="", use_wheeldir=False):
-    """Upgrade requirements txt file"""
-    hashes = "--generate-hashes" if hashes else ""
-    if upgrade:
-        upgrades = " ".join(f"-P {package}" for package in upgrade.split(","))
-    else:
-        upgrades = "-U"
-    
-    paths = get_paths(ctx)
-    wheel_dir = paths.local.wheelhouse
-    with ctx.cd(str(ROOT_DIR)):
-        run(ctx, f"uv pip compile {upgrades} {hashes} --extra-index-url {wheel_dir}"
-            f" -o requirements/{mode}.txt"
-            f" requirements/{mode}.in")
-
-
-@task(help={
-        "mode": "select requirements file, e.g. \"prod\" for requirements/prod.txt and prod.in; default: \"dev\"",
-        })
-def upgrade_venv(ctx, mode="dev"):
-    """Upgrade current venv from requirements/{mode}.txt file"""
-    with ctx.cd(str(ROOT_DIR)):
-        run(ctx, f"uv pip sync requirements/{mode}.txt")
-
-
-################################################################################
 ### 
 ### Generate, deploy, and install wheels
 
@@ -283,13 +122,15 @@ def deploy_add_wheel(
         version: str | None = None,
         ) -> None:
     """Adds wheel of current package to deployment wheelhouse."""
+    options = get_options(ctx)
     verb = "-v" if ctx["run"]["echo"] else ""
     dry_run = ctx["run"]["dry"]
     
     if version is None:
-        version = Path(f"{SUB_DIR}/VERSION").read_text().strip()
+        version = get_version(ctx)
         print(f"[green]deploying version {version}[/green]")
-    glob = f"{PACKAGE.replace('-', '_')}-{version}-*.whl"
+    package_prefix = to_snake_case(options.package_name)
+    glob = f"{package_prefix}-{version}-*.whl"
     wheelnames = list(paths.local.wheelhouse.glob(glob))
     if not wheelnames:
         if dry_run:
@@ -363,7 +204,7 @@ def deploy_copy_remote(
     run(ctx, f"scp {paths.local.req_prod} {target}:{paths.target.req_prod}")
     run(ctx, f"rsync -avxc --delete {paths.local.wheels}/ {target}:{paths.target.wheelhouse}/")
     remote(ctx, f"VIRTUAL_ENV={paths.target.venv} uv pip install {py_opt} --no-index " +
-            f"-f {paths.target.wheelhouse} -r {paths.target.req_prod} {PACKAGE}")
+            f"-f {paths.target.wheelhouse} -r {paths.target.req_prod} {options.package_name}")
 
 
 def deploy_act_remote(
