@@ -87,8 +87,8 @@ def get_paths(ctx: context.Context,
         ) -> SN:
     """Determines paths to deployment-specific remote and local directories and files."""
     options = ctx["hhu_options"]
-    base = options.target.base_path
-    django = options.target.django_dir
+    base = Path(options.target.base_path)
+    django = Path(options.target.django_dir)
     paths = SN(
             target = SN(
                 base = base,

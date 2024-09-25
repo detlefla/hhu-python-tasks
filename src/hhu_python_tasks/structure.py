@@ -20,6 +20,12 @@ class RemoteHostInfo:
     base_path: Path
     django_dir: Path
     user: str
+    
+    def __attrs_post_init__(self):
+        if isinstance(self.base_path, str):
+            self.base_path = Path(self.base_path)
+        if isinstance(self.django_dir, str):
+            self.django_dir = Path(self.django_dir)
 
 
 @define
@@ -29,12 +35,20 @@ class BackupInfo:
     user: str
     filename_glob: str
     filename_pattern: str
+    
+    def __attrs_post_init__(self):
+        if isinstance(self.directory, str):
+            self.directory = Path(self.directory)
 
 
 @define
 class SubPackageInfo:
     name: str
     workdir: Path
+    
+    def __attrs_post_init__(self):
+        if isinstance(self.workdir, str):
+            self.workdir = Path(self.workdir)
 
 
 @define
