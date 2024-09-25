@@ -67,7 +67,8 @@ def get_local_paths(ctx: context.Context,
     options = ctx["hhu_options"]
     root = get_pyproject_path()
     wheelhouse = options.wheelhouse.expanduser().absolute()
-    private_files = options.private_files.expanduser().absolute()
+    if options.private_files is not None:
+        private_files = options.private_files.expanduser().absolute()
     local = SN(
             temp_venv = root / "deploy" / "venv",
             wheelhouse = wheelhouse,
