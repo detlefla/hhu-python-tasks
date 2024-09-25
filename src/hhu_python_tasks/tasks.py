@@ -330,9 +330,15 @@ def push(ctx):
 # ns.add_task(push)
 
 
-# @task
-# def debug_context(ctx):
-#     """Debugging aid"""
-#     print(ctx)
-#
+########################## Debug ##########################
+
+
+def debug_context(ctx):
+    """Debugging aid"""
+    options = get_options(ctx)
+    print(f"{options=}\n\n{ctx=}")
+
+if os.environ.get("DEBUG_INV"):
+    debug_context = task()(debug_context)
+
 # ns.add_task(debug_context)

@@ -1,4 +1,5 @@
 from attrs import define, Factory
+from cattrs import structure
 from cattrs.preconf.pyyaml import make_converter as make_yaml_converter
 # from cattrs.preconf.json import make_converter as make_json_converter
 from fabric import Connection
@@ -20,12 +21,6 @@ class RemoteHostInfo:
     base_path: Path
     django_dir: Path
     user: str
-    
-    def __attrs_post_init__(self):
-        if isinstance(self.base_path, str):
-            self.base_path = Path(self.base_path)
-        if isinstance(self.django_dir, str):
-            self.django_dir = Path(self.django_dir)
 
 
 @define
@@ -35,20 +30,12 @@ class BackupInfo:
     user: str
     filename_glob: str
     filename_pattern: str
-    
-    def __attrs_post_init__(self):
-        if isinstance(self.directory, str):
-            self.directory = Path(self.directory)
 
 
 @define
 class SubPackageInfo:
     name: str
     workdir: Path
-    
-    def __attrs_post_init__(self):
-        if isinstance(self.workdir, str):
-            self.workdir = Path(self.workdir)
 
 
 @define
@@ -78,13 +65,6 @@ class ProjectInfo:
             self.runserver_port = 8000 + self.project_id
         if self.wheelhouse is None:
             self.wheelhouse = get_pyproject_path() / "wheels"
-        # cattrs doesn't deliver Path instances??
-        if isinstance(self.src_path, str):
-            self.src_path = Path(self.src_path)
-        if isinstance(self.private_files, str):
-            self.private_files = Path(self.private_files)
-        if isinstance(self.wheelhouse, str):
-            self.wheelhouse = Path(self.wheelhouse)
 
 
 def get_options(ctx: context.Context) -> ProjectInfo:
@@ -102,7 +82,7 @@ def get_options(ctx: context.Context) -> ProjectInfo:
     else:
         ctx_info = {a.name: ctx[a.name]
                 for a in ProjectInfo.__attrs_attrs__ if a.name in ctx}
-        pi = ProjectInfo(**ctx_info)
+        pi = structure(ctx_info, ProjectInfo)
     ctx["hhu_options"] = pi
     return pi
 
