@@ -66,13 +66,15 @@ def get_local_paths(ctx: context.Context,
     """Determines paths to deployment-specific local directories and files."""
     options = ctx["hhu_options"]
     root = get_pyproject_path()
+    wheelhouse = options.wheelhouse.expanduser().absolute()
+    private_files = options.private_files.expanduser().absolute()
     local = SN(
             temp_venv = root / "deploy" / "venv",
-            wheelhouse = options.wheelhouse,
+            wheelhouse = wheelhouse,
             req_prod_in = root / "requirements" / "prod.in",
             req_prod_txt = root / "requirements" / "prod.txt",
             private = root / "private",
-            base_private = options.private_files,
+            base_private = private_files,
             )
     if did is not None:
         local.deploy = root / "deploy" / did
