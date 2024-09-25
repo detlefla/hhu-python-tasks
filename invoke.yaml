@@ -1,0 +1,13 @@
+---
+project_name: 
+project_id: 28
+src_path: src/hhu_python_tasks
+package_name: hhu-python-tasks
+wheelhouse: ../wheels
+
+editor_options:
+  joe: ["-joe_state", "-restore"]
+editor_files:
+  - src/hhu_python_tasks/tasks.py
+  - src/hhu_python_tasks/project_tasks.py
+  - src/hhu_python_tasks/structure.py
