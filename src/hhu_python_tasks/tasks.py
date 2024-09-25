@@ -58,6 +58,7 @@ def check_branch(ctx: context.Context, branch: str) -> None:
 def inc_version(ctx: context.Context,
         level: str = "minor",
         branch: str = "master",
+        commit: bool = True,
         set_tag: bool = True,
         ) -> None:
     """Increment package version"""
@@ -75,14 +76,17 @@ def inc_version(ctx: context.Context,
         v = v.next_major()
     else:
         raise AssertionError(f"unknown version level “{level}”")
+    filepath = get_versionfile_path(ctx)
     if ctx["run"]["dry"]:
         print(f"new version would be “{v}”")
     else:
         if dry_run:
             print(f"would write “{v}” to {get_versionfile_path(ctx)}")
         else:
-            p = get_versionfile_path(ctx).write_text(str(v))
+            filepath.write_text(str(v))
             print(f"[green]new version is {v}")
+            if commit:
+                run(ctx, f"git commit -m 'bumped version to “{v}”' {filepath}")
     
     # set git tag if requested (and possible)
     if set_tag:

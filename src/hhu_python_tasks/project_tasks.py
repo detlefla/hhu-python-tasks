@@ -199,7 +199,7 @@ def deploy_copy_remote(
     else:
         py = f"python{python_version}"
         py_opt = f"--python {py}"
-    target = f"{target.user}@{target.hostname}"
+    target = f"{options.target.user}@{options.target.hostname}"
     remote(ctx, f"uv venv {py_opt} --prompt {did[:8]} {paths.target.venv}")
     run(ctx, f"scp {paths.local.req_prod} {target}:{paths.target.req_prod}")
     run(ctx, f"rsync -avxc --delete {paths.local.wheels}/ {target}:{paths.target.wheelhouse}/")
