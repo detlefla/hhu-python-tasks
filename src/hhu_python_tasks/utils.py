@@ -11,7 +11,11 @@ import yaml
 def get_versionfile_path(ctx: context.Context) -> Path:
     """Returns the path of the version file."""
     options = ctx["hhu_options"]
-    p = get_pyproject_path() / options.src_path / "VERSION"
+    if "src_path" in ctx:
+        src_path = ctx["src_path"]
+    else:
+        src_path = f"src/{to_snake_case(options.project_name or '')}"
+    p = get_pyproject_path() / src_path / "VERSION"
     return p
 
 

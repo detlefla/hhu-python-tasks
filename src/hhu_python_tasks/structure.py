@@ -45,7 +45,6 @@ class SubPackageInfo:
 class ProjectInfo:
     project_name: str | None = None
     project_id: int = 99
-    src_path: Path | None = None
     private_files: Path | None = None
     package_name: str | None = None
     target: RemoteHostInfo | None = None
@@ -56,8 +55,6 @@ class ProjectInfo:
     packages: list[SubPackageInfo] = Factory(list)
     
     def __attrs_post_init__(self):
-        if self.src_path is None:
-            self.src_path = Path("src") / to_snake_case(self.project_name)
         if self.package_name is None:
             self.package_name = self.project_name
         if self.python_version is None:
