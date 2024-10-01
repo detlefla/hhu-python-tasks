@@ -7,8 +7,9 @@ from invoke import context
 import logging
 from pathlib import Path
 import sys
+from typing import Literal
 
-from .utils import get_pyproject_path
+from .utils import get_pyproject, get_pyproject_path, to_snake_case
 
 
 logger = logging.getLogger(__file__)
@@ -21,6 +22,8 @@ class RemoteHostInfo:
     base_path: Path
     django_dir: Path
     user: str
+    service_name: str | None = None  # None: equal to project_name
+    service_start: Literal["systemd"] | Literal["supervisord"] = "systemd"
 
 
 @define
@@ -40,7 +43,7 @@ class SubPackageInfo:
 
 @define
 class ProjectInfo:
-    project_name: str
+    project_name: str | None = None
     project_id: int = 99
     src_path: Path | None = None
     private_files: Path | None = None
@@ -51,12 +54,10 @@ class ProjectInfo:
     wheelhouse: Path | None = None
     backup: dict[str, BackupInfo] = Factory(dict)
     packages: list[SubPackageInfo] = Factory(list)
-    editor_options: dict[str, list[str]] = Factory(dict)
-    editor_files: list[Path] = Factory(list)
     
     def __attrs_post_init__(self):
         if self.src_path is None:
-            self.src_path = Path("src") / self.project_name
+            self.src_path = Path("src") / to_snake_case(self.project_name)
         if self.package_name is None:
             self.package_name = self.project_name
         if self.python_version is None:
@@ -65,26 +66,92 @@ class ProjectInfo:
             self.runserver_port = 8000 + self.project_id
         if self.wheelhouse is None:
             self.wheelhouse = get_pyproject_path() / "wheels"
+        if self.target is not None and self.target.service_name is None:
+            self.target.service_name = self.project_name
+
+
+@define
+class LocalInfo:
+    editor_options: dict[str, list[str]] = Factory(dict)
+    editor_files: list[Path] = Factory(list)
+
+
+# Configuration files:
+#
+# -  invoke.yaml:
+#       automatically read by ``inv`` command, optional, may contain
+#
+#       -  src_path: path to the source directory (default: src/PACKAGE)
+#       -  local config: path to a local, unversioned configuration file (default:
+#          ``hhu_tasks_local.yaml``)
+#       -  config_file: path to or name of a project config file (default: ``hhu_tasks.yaml``)
+#       -  search_config: boolean, specifies whether to search for a project config file
+#          above the pyproject.toml directory (default: false)
+#
+# -  hhu_tasks.yaml:
+#       project-global configuration, described by ProjectInfo; data 
+#
+# -  hhu_tasks_local.yaml:
+#       package-local configuration, private to the user (unversioned)
+#
+# All these files are optional.
+#
+# Their contents (or defaults) are inserted into the context with the keys "hhu_options"
+# and "hhu_local_options", respectively.
 
 
 def get_options(ctx: context.Context) -> ProjectInfo:
     """Extracts project information from invoke context."""
-    pi: ProjectInfo
-    if "config_file" in ctx:
-        filename = Path(ctx["config_file"]).expanduser()
-        base = get_pyproject_path()
-        if base is None:
-            base = Path(".")
-        filename = (base / filename).absolute()
-        yaml_converter = make_yaml_converter()
-        pi = yaml_converter.loads(filename.read_text(), ProjectInfo)
-        logger.info(f"reading configuration data from {filename}")
+    project_info: ProjectInfo | None = None
+    local_info: LocalInfo
+    
+    src_path: str | None = ctx.get("src_path")
+    local_config: str = ctx.get("local_config", "hhu_tasks_local.yaml")
+    config_file: str = ctx.get("config_file", "hhu_tasks.yaml")
+    search_config: bool = bool(ctx.get("search_config", False))
+    
+    yaml_converter = make_yaml_converter()
+    base = get_pyproject_path() or Path(".")
+    pyp = get_pyproject(base / "pyproject.toml")
+    ctx["pyproject"] = pyp
+    
+    # Try to read local configuration
+    local_conf_path = base / local_config
+    if local_conf_path.exists():
+        logger.info(f"reading local configuration data from {local_conf_path}")
+        local_info = yaml_converter.loads(local_conf_path.read_text(), LocalInfo)
     else:
-        ctx_info = {a.name: ctx[a.name]
-                for a in ProjectInfo.__attrs_attrs__ if a.name in ctx}
-        pi = structure(ctx_info, ProjectInfo)
-    ctx["hhu_options"] = pi
-    return pi
+        local_info = LocalInfo()
+    ctx["hhu_local_options"] = local_info
+    
+    # Try to read project configuration
+    project_conf_path = Path(config_file)
+    if not project_conf_path.is_absolute() and search_config:
+        search_dir = base
+        while True:
+            p = search_dir / config_file
+            if p.exists():
+                logger.info(f"reading configuration data from {filename}")
+                project_info = yaml_converter.loads(p.read_text(), ProjectInfo)
+                break
+            prev_dir = search_dir
+            search_dir = search_dir.parent
+            if prev_dir == search_dir:
+                # no chance of going further upwards
+                break
+    else:
+        p = base / project_conf_path
+        if p.exists():
+            logger.info(f"reading configuration data from {filename}")
+            project_info = yaml_converter.loads(p.read_text(), ProjectInfo)
+    
+    if project_info is None:
+        project_info = ProjectInfo(project_name=pyp.project["name"])
+    elif project_info.name is None:
+        project_info.project_name = pyp.project["name"]
+    ctx["hhu_options"] = project_info
+            
+    return project_info
 
 
 ####################################################################################################

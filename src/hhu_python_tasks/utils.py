@@ -2,6 +2,7 @@ from fabric import Connection
 from invoke import context
 import os
 from pathlib import Path
+from pyproject_parser import PyProject
 from types import SimpleNamespace as SN
 from typing import Any
 import yaml
@@ -124,6 +125,14 @@ def get_pyproject_path(start: str | Path = ".") -> Path:
             break
         p = p.parent
     return cwd
+
+
+def get_pyproject(pp_path: Path | None) -> PyProject:
+    """Reads a pyproject.toml file."""
+    if pp_path is None:
+        raise FileNotFoundError("no pyproject.toml file found")
+    pp = PyProject.load(pp_path)
+    return pp
 
 
 def to_snake_case(name: str) -> str:

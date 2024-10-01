@@ -41,7 +41,11 @@ def check_branch(ctx: context.Context, branch: str) -> None:
     else:
         # we are inside a git tree
         for branch_line in output.splitlines():
-            indicator, branch_name = branch_line.split(None, 1)
+            parts = branch_line.split(None, 1)
+            if len(parts) != 2:
+                # no usable branch
+                continue
+            indicator, branch_name = parts
             if indicator == "*" and branch_name != branch:
                 if dry_run:
                     print(f"[#f0c000]currently on git branch “{branch_name}” instead of “{branch}”")
