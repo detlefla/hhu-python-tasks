@@ -131,7 +131,7 @@ def get_options(ctx: context.Context) -> ProjectInfo:
         while True:
             p = search_dir / config_file
             if p.exists():
-                logger.info(f"reading configuration data from {filename}")
+                logger.info(f"reading configuration data from {p}")
                 project_info = yaml_converter.loads(p.read_text(), ProjectInfo)
                 break
             prev_dir = search_dir
@@ -142,13 +142,15 @@ def get_options(ctx: context.Context) -> ProjectInfo:
     else:
         p = base / project_conf_path
         if p.exists():
-            logger.info(f"reading configuration data from {filename}")
+            logger.info(f"reading configuration data from {p}")
             project_info = yaml_converter.loads(p.read_text(), ProjectInfo)
     
     if project_info is None:
-        project_info = ProjectInfo(project_name=pyp.project["name"])
-    elif project_info.name is None:
-        project_info.project_name = pyp.project["name"]
+        project_name = pyp.project["name"] if pyp.project is not None else ""
+        project_info = ProjectInfo(project_name=project_name)
+    elif project_info.project_name is None:
+        project_name = pyp.project["name"] if pyp.project is not None else ""
+        project_info.project_name = project_name
     ctx["hhu_options"] = project_info
             
     return project_info

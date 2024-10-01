@@ -11,7 +11,7 @@ from semantic_version import Version
 import subprocess
 import sys
 from types import SimpleNamespace as SN
-from typing import Any, Optional
+from typing import Any, cast, Optional
 import uuid_utils as uuid
 import yaml
 
@@ -129,7 +129,8 @@ def deploy_add_wheel(
     if version is None:
         version = get_version(ctx)
         print(f"[green]deploying version {version}[/green]")
-    package_prefix = to_snake_case(options.package_name)
+    src_path = ctx.get("src_path", f"src/{options.project_name or ''}")
+    package_prefix = to_snake_case(src_path)
     glob = f"{package_prefix}-{version}-*.whl"
     wheelnames = list(paths.local.wheelhouse.glob(glob))
     if not wheelnames:
