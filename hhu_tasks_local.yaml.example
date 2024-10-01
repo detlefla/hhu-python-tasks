@@ -1,0 +1,8 @@
+editor_options:
+   joe: ["-joe_state", "-restore", "-nolocks"]
+editor_files: [
+   src/hhu_python_tasks/tasks.py,
+   src/hhu_python_tasks/project_tasks.py,
+   src/hhu_python_tasks/structure.py,
+   src/hhu_python_tasks/utils.py,
+  ]

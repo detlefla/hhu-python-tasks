@@ -259,11 +259,16 @@ def shell(ctx, print_sql=False):
         })
 def edit(ctx, editor=""):
     """Start editor and load a convenient set of source files"""
-    editor = editor or os.environ.get("EDITOR")
-    options = " ".join(ctx.get("editor_options", {}).get(editor, []))
-    files = " ".join(ctx.get("editor_files", []))
-    with ctx.cd(str(ROOT_DIR)):
-        run(ctx, f"{editor} {options} {files}", pty=False)
+    options = get_options(ctx)
+    local_options = ctx["hhu_local_options"]
+    editor = editor or os.environ.get("EDITOR") or list(local_options.editor_options.keys())[0]
+    if local_options.editor_options:
+        editor_options = " ".join(local_options.editor_options[editor])
+    else:
+        editor_options = ""
+    files = " ".join(str(f) for f in local_options.editor_files)
+    with ctx.cd(str(get_pyproject_path())):
+        run(ctx, f"{editor} {editor_options} {files}", pty=False)
 
 # ns.add_task(edit)
 

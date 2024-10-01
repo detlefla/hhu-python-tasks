@@ -3,6 +3,9 @@
 DEADJOE
 .#*
 
+# local configuration
+hhu_tasks_local.yaml
+
 # Special directories
 local/
 private/
