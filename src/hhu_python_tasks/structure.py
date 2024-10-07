@@ -50,7 +50,7 @@ class ProjectInfo:
     target: RemoteHostInfo | None = None
     python_version: str | None = None
     runserver_port: int | None = None
-    wheelhouse: Path | None = None
+    wheelhouse: Path | None = "wheels"
     backup: dict[str, BackupInfo] = Factory(dict)
     packages: list[SubPackageInfo] = Factory(list)
     
@@ -61,8 +61,6 @@ class ProjectInfo:
             self.python_version = f"{sys.version_info.major}.{sys.version_info.minor}"
         if self.runserver_port is None and self.project_id:
             self.runserver_port = 8000 + self.project_id
-        if self.wheelhouse is None:
-            self.wheelhouse = get_pyproject_path() / "wheels"
         if self.target is not None and self.target.service_name is None:
             self.target.service_name = self.project_name
 
@@ -128,7 +126,7 @@ def get_options(ctx: context.Context) -> ProjectInfo:
         while True:
             p = search_dir / config_file
             if p.exists():
-                logger.info(f"reading configuration data from {p}")
+                print(f"reading configuration data from {p}")
                 project_info = yaml_converter.loads(p.read_text(), ProjectInfo)
                 break
             prev_dir = search_dir
@@ -139,7 +137,7 @@ def get_options(ctx: context.Context) -> ProjectInfo:
     else:
         p = base / project_conf_path
         if p.exists():
-            logger.info(f"reading configuration data from {p}")
+            print(f"reading configuration data from {p}")
             project_info = yaml_converter.loads(p.read_text(), ProjectInfo)
     
     if project_info is None:
@@ -149,6 +147,7 @@ def get_options(ctx: context.Context) -> ProjectInfo:
         project_name = pyp.project["name"] if pyp.project is not None else ""
         project_info.project_name = project_name
     ctx["hhu_options"] = project_info
+    ctx["hhu_options_base"] = p.parent
             
     return project_info
 

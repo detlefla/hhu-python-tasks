@@ -215,13 +215,32 @@ def deploy_act_remote(
         python_version: str | None = None,
         collectstatic: bool = False,
         ) -> None:
-    """Activates deployment on remote host."""
+    """Activates deployment on the remote host."""
     remote(ctx, f"{paths.target.venv / 'bin' / 'python'} {paths.target.project / 'manage.py'} check")
     remote(ctx, f"{paths.target.venv / 'bin' / 'python'} {paths.target.project / 'manage.py'} migrate")
     if collectstatic:
         remote(ctx, f"{paths.target.venv / 'bin' / 'python3'} {paths.target.project / 'manage.py'} collectstatic")
     remote(ctx, f"ln -sfn {paths.target.wheelhouse.parts[-1]} {paths.target.wheels_act}")
     remote(ctx, f"ln -sfn {paths.target.venv.parts[-1]} {paths.target.venv_act}")
+
+
+def deploy_service_restart(
+        ctx: context.Context,
+        ) -> None:
+    """Restarts the service on the remote host."""
+    options = ctx["hhu_options"]
+    if options.target is None:
+        print("[red]no target host configured")
+        raise ValueError("no target host")
+    if options.target.service_start == "supervisord":
+        cmd = f"supervisorctl restart {options.project_name}"
+    elif options.target.service_start == "systemd":
+        cmd = f"systemctl restart {options.project_name}.service"
+    else:
+        cmd = ""
+        print("[red]no service type configured")
+    if cmd:
+        remote(ctx, cmd)
 
 
 @task(help={
@@ -231,6 +250,7 @@ def deploy_act_remote(
         "activate": "make new venv on remote the active one, migrate, and collectstatic (unless suppressed) (default: True)",
         "cleanup": "remove local deployment directory (with deployment-id) (default: True)",
         "collectstatic": "run “manage.py collectstatic” on remote if --activate is specified (default: True)",
+        "restart": "restart the remote service after deployment (default: True)",
         "python_version": "Python version to use, e.g. “3.12”",
         })
 def deploy_package(
@@ -241,6 +261,7 @@ def deploy_package(
         activate: bool = True,
         cleanup: bool = True,
         collectstatic: bool = True,
+        restart: bool = True,
         python_version: str | None = None,
         ) -> None:
     """Deploy package to target host, optionally installing it."""
@@ -258,14 +279,15 @@ def deploy_package(
     
     try:
         deploy_prep(ctx, did, paths)
-        deploy_add_wheel(ctx, did, paths, version=version)
+        # deploy_add_wheel(ctx, did, paths, version=version)
         deploy_add_reqs(ctx, did, paths, python_version=python_version)
         if install:
             deploy_prep_remote(ctx, did, paths)
             deploy_copy_remote(ctx, did, paths, python_version=python_version)
             if activate:
                 deploy_act_remote(ctx, did, paths, collectstatic=collectstatic)
-    
+                if restart:
+                    deploy_service_restart(ctx)
     finally:
         if cleanup:
             print("[green]cleaning up …[/green]")

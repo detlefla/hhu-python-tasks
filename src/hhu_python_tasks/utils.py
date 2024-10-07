@@ -70,8 +70,8 @@ def get_local_paths(ctx: context.Context,
         ) -> SN:
     """Determines paths to deployment-specific local directories and files."""
     options = ctx["hhu_options"]
-    root = get_pyproject_path()
-    wheelhouse = options.wheelhouse.expanduser().absolute()
+    root = base or ctx.get("hhu_options_base") or get_pyproject_path()
+    wheelhouse = (root / options.wheelhouse).expanduser().absolute()
     private_files = options.private_files
     if private_files is not None:
         private_files = private_files.expanduser().absolute()
