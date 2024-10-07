@@ -50,33 +50,24 @@ def get_conf(ctx: context.Context, name: str, default: Any = None) -> Any:
     return value
 
 
-def set_editable_paths(ctx: context.Context) -> None:
-    """Exports subpackage locations to the environment."""
-    options = ctx["hhu_options"]
-    dry_run = ctx["run"]["dry"]
-    for pkg_info in options.packages:
-        env_key = pkg_info.name.upper()
-        env_value = pkg_info.workdir
-        if dry_run:
-            print(f"would export {env_key}={env_value}")
-        else:
-            os.environ[env_key] = str(env_value)
-
-
 def get_local_paths(ctx: context.Context,
         *,
         did: str | None = None,
         base: Path | None = None,
+        root: Path | None = None,
         ) -> SN:
     """Determines paths to deployment-specific local directories and files."""
     options = ctx["hhu_options"]
-    root = base or ctx.get("hhu_options_base") or get_pyproject_path()
-    wheelhouse = (root / options.wheelhouse).expanduser().absolute()
+    base = base or ctx.get("hhu_options_base") or get_pyproject_path()
+    root = root or get_pyproject_path()
+    wheelhouse = (base / options.wheelhouse).expanduser().absolute()
     private_files = options.private_files
     if private_files is not None:
         private_files = private_files.expanduser().absolute()
     local = SN(
-            temp_venv = root / "deploy" / "venv",
+            base_config_dir = base,
+            app_root = root,
+            temp_venv = base / "deploy" / "venv",
             wheelhouse = wheelhouse,
             req_prod_in = root / "requirements" / "prod.in",
             req_prod_txt = root / "requirements" / "prod.txt",
@@ -84,9 +75,9 @@ def get_local_paths(ctx: context.Context,
             base_private = private_files,
             )
     if did is not None:
-        local.deploy = root / "deploy" / did
-        local.req_prod = root / "deploy" / did / f"requirements.txt"
-        local.wheels = root / "deploy" / did / f"wheels"
+        local.deploy = base / "deploy" / did
+        local.req_prod = base / "deploy" / did / f"requirements.txt"
+        local.wheels = base / "deploy" / did / f"wheels"
     return local
 
 

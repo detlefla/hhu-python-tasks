@@ -273,7 +273,7 @@ def deploy_package(
     print(f"[green]deployment id is “{did}”[/green]")
     
     if python_version is None:
-        python_version = ctx.get("python_version")
+        python_version = options.python_version
     
     paths = get_paths(ctx, did=did)
     
