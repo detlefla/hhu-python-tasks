@@ -118,6 +118,9 @@ def make_wheel(ctx: context.Context,
     check_branch(ctx, branch)
     
     local_paths = get_local_paths(ctx)
+    if os.environ.get("DEBUG_INV"):
+        print(options)
+        print(local_paths)
     
     if (local_paths.wheelhouse / wheelname).exists():
         if ctx["run"]["dry"]:

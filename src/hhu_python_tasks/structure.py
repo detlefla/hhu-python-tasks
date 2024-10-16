@@ -5,6 +5,7 @@ from cattrs.preconf.pyyaml import make_converter as make_yaml_converter
 from fabric import Connection
 from invoke import context
 import logging
+import os
 from pathlib import Path
 import sys
 from typing import Literal
@@ -133,6 +134,7 @@ def get_options(ctx: context.Context) -> ProjectInfo:
             search_dir = search_dir.parent
             if prev_dir == search_dir:
                 # no chance of going further upwards
+                p = base / config_file
                 break
     else:
         p = base / project_conf_path
@@ -148,48 +150,8 @@ def get_options(ctx: context.Context) -> ProjectInfo:
         project_info.project_name = project_name
     ctx["hhu_options"] = project_info
     ctx["hhu_options_base"] = p.parent
-            
+    
+    if os.environ.get("DEBUG_INV"):
+        print("get_options:", f"{ctx['hhu_options']=}", f"{ctx['hhu_options_base']=}, {base=}")
+    
     return project_info
-
-
-####################################################################################################
-
-
-data = """
----
-project_name: hhunet
-project_id: 22
-src_path: hhunet
-package_name: django-hhunet
-target:
-   hostname: hhunet.hhu.de
-   base_path: /home/hhunet
-   user: rlannert
-python_version: "3.9"
-wheelhouse: ~/projects/wheels
-packages:
-   -  name: django-zim-tools
-      workdir: ../zimdj
-   -  name: django-network-resources
-      workdir: ../netres
-   -  name: django-hhunet
-      workdir: .
-
-editor_options:
-  joe: ["-joe_state", "-restore", "-nolocks"]
-editor_files: [
-  hhunet/urls.py,
-  hhunet/views.py,
-  ]
-"""
-
-def main():
-    yaml_converter = make_yaml_converter()
-    pi = yaml_converter.loads(data, ProjectInfo)
-    print(repr(pi))
-    print()
-    print(yaml_converter.dumps(pi))
-
-
-if __name__ == "__main__":
-    main()

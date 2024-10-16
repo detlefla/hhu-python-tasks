@@ -58,6 +58,7 @@ def get_local_paths(ctx: context.Context,
         ) -> SN:
     """Determines paths to deployment-specific local directories and files."""
     options = ctx["hhu_options"]
+    options_base = ctx.get("hhu_options_base")
     base = base or ctx.get("hhu_options_base") or get_pyproject_path()
     root = root or get_pyproject_path()
     wheelhouse = (base / options.wheelhouse).expanduser().absolute()
@@ -78,6 +79,8 @@ def get_local_paths(ctx: context.Context,
         local.deploy = base / "deploy" / did
         local.req_prod = base / "deploy" / did / f"requirements.txt"
         local.wheels = base / "deploy" / did / f"wheels"
+    if os.environ.get("DEBUG_INV"):
+        print("get_local_paths:", f"{base=}, {options_base=}, {root=}, {wheelhouse=}")
     return local
 
 
@@ -115,10 +118,14 @@ def get_pyproject_path(start: str | Path = ".") -> Path:
     p = cwd
     while True:
         if (p / "pyproject.toml").exists():
+            if os.environ.get("DEBUG_INV"):
+                print("get_pyproject_path: found", f"{cwd=}, {p=}")
             return p
         if p == p.parent:
             break
         p = p.parent
+    if os.environ.get("DEBUG_INV"):
+        print("get_pyproject_path:", f"{cwd=}, {p=}")
     return cwd
 
 
