@@ -241,18 +241,13 @@ def runserver(ctx):
 def shell(ctx, print_sql=False):
     """Run the shell plus tool"""
     options = get_options(ctx)
-    manage = get_pyproject_path() / "manage.py"
-    envvars = ctx.get("dev_env_vars")
-    if envvars:
-        envvars += " "
-    else:
-        envvars = ""
+    manage = options.project_name
     sql_option = "--print-sql" if print_sql else ""
     if Path(f"~/.ipython/profile_{options.project_name}/").expanduser().is_dir():
         profile_option = f"-- --profile={options.project_name}"
     else:
         profile_option = ""
-    run(ctx, f"{envvars}{manage} shell_plus --ipython {sql_option} {profile_option}", pty=True)
+    run(ctx, f"{manage} shell_plus --ipython {sql_option} {profile_option}", pty=True)
 
 # ns.add_task(shell)
 

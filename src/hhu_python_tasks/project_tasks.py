@@ -219,7 +219,8 @@ def deploy_act_remote(
     remote(ctx, f"{paths.target.venv / 'bin' / 'python'} {paths.target.project / 'manage.py'} check")
     remote(ctx, f"{paths.target.venv / 'bin' / 'python'} {paths.target.project / 'manage.py'} migrate")
     if collectstatic:
-        remote(ctx, f"{paths.target.venv / 'bin' / 'python3'} {paths.target.project / 'manage.py'} collectstatic")
+        remote(ctx, f"{paths.target.venv / 'bin' / 'python3'} {paths.target.project / 'manage.py'} collectstatic",
+                chdir=paths.target.project)
     remote(ctx, f"ln -sfn {paths.target.wheelhouse.parts[-1]} {paths.target.wheels_act}")
     remote(ctx, f"ln -sfn {paths.target.venv.parts[-1]} {paths.target.venv_act}")
 

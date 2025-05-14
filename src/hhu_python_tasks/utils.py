@@ -170,6 +170,7 @@ def remote(ctx: context.Context,
         *,
         host: str | None = None,
         user: str | None = None,
+        chdir: str | None = None,
         run_always: bool = False,
         hide: bool = False,
         dry_run: bool = False,
@@ -190,14 +191,22 @@ def remote(ctx: context.Context,
     if user is not None:
         conn.user = user
     if dry_run:
+        if chdir:
+            from_dir = f":{chdir}"
+        else:
+            from_dir = ""
         if run_always:
-            print(f"will run on {host}: {command}")
+            print(f"will run on {host}{from_dir}: {command}")
             result = conn.run(command, hide=hide)
         else:
-            print(f"would run on {host}: {command}")
+            print(f"would run on {host}{from_dir}: {command}")
             result = Result(command=command, connection=conn)
     else:
+        if chdir:
+            full_cmd = f"cd {chdir} && {command}"
+        else:
+            full_cmd = command
         if ctx["run"]["echo"]:
-            print(f"{conn.user}@{conn.host} running {command}")
-        result = conn.run(command, hide=hide)
+            print(f"{conn.user}@{conn.host} running {full_cmd}")
+        result = conn.run(full_cmd, hide=hide)
     return result

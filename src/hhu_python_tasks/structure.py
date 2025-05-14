@@ -152,6 +152,7 @@ def get_options(ctx: context.Context) -> ProjectInfo:
     ctx["hhu_options_base"] = p.parent
     
     if os.environ.get("DEBUG_INV"):
+        print(f"get_options: {search_config=}, {project_conf_path=}, {p=}")
         print("get_options:", f"{ctx['hhu_options']=}", f"{ctx['hhu_options_base']=}, {base=}")
     
     return project_info
