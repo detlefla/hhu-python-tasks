@@ -216,8 +216,10 @@ def deploy_act_remote(
         collectstatic: bool = False,
         ) -> None:
     """Activates deployment on the remote host."""
-    remote(ctx, f"{paths.target.venv / 'bin' / 'python'} {paths.target.project / 'manage.py'} check")
-    remote(ctx, f"{paths.target.venv / 'bin' / 'python'} {paths.target.project / 'manage.py'} migrate")
+    remote(ctx, f"{paths.target.venv / 'bin' / 'python'} {paths.target.project / 'manage.py'} check",
+            chdir=paths.target.project)
+    remote(ctx, f"{paths.target.venv / 'bin' / 'python'} {paths.target.project / 'manage.py'} migrate",
+            chdir=paths.target.project)
     if collectstatic:
         remote(ctx, f"{paths.target.venv / 'bin' / 'python3'} {paths.target.project / 'manage.py'} collectstatic",
                 chdir=paths.target.project)
