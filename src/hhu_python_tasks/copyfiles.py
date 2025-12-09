@@ -39,8 +39,13 @@ class FileCopy(threading.Thread):
 def copy_files(
         destination: Path,
         files: list[Path],
+        clean: bool = False,
         ) -> list[CopyResult]:
     """Copies a number of files to a destination directory in separate threads."""
+    if clean:
+        shutil.rmtree(destination)
+    destination.mkdir(parents=True, exist_ok=True)
+    
     copy_results: list[CopyResult] = []
     work_queue: Queue[CopyResult] = Queue()
     thlist: list[FileCopy] = []
