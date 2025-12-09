@@ -34,11 +34,11 @@ class SshRunner:
         self.client = client
     
     def run(self,
-            args: list[str],
+            args: list[str | Path],
             dry_run: bool = False,
             ) -> CommandResult:
         """Executes a command via SSH."""
-        command = " ".join(args)
+        command = " ".join(str(a) for a in args)
         
         if self.dry_run or dry_run:
             if self.remote_user:
@@ -111,26 +111,30 @@ class LocalRunner:
         self.closed = False
     
     def run(self,
-            args: list[str],
+            args: list[str | Path],
             dry_run: bool = False,
             ) -> CommandResult:
         """Executes a command locally."""
         if self.closed:
             raise ValueError("trying to use LocalRunner after close()")
+        str_args = [str(a) for a in args]
         if self.dry_run or dry_run:
-            command = " ".join(args)
+            command = " ".join(str_args)
             print(f"would execute locally: {command}")
             return CommandResult(ok=True, stdout="", stderr="")
         
         with chdir(self.directory):
-            r = subprocess.run(args, capture_output=True, encoding="utf-8")
+            r = subprocess.run(str_args, capture_output=True, encoding="utf-8")
         result = CommandResult(
                 ok = r.returncode == 0,
                 stdout = r.stdout,
                 stderr = r.stderr,
                 )
         if self.verbose:
-            print(f"cmd result {r.returncode} from {' '.join(args)}")
+            print(f"cmd result {r.returncode} from {' '.join(str_args)}")
+        if not result.ok:
+            print(f"cmd error: {result.stderr}")
+            # XXX better error reporting needed
         return result
     
     def close(self) -> None:
@@ -170,3 +174,15 @@ class LocalRunner:
         shutil.copy2(real_src, dst)
         if self.verbose:
             print(f"copied {real_src} to {dst}")
+
+
+def get_command_runner(
+        hostname: str | None,
+        remote_user: str | None,
+        dry_run: bool = False,
+        verbose: bool = False,
+        ) -> LocalRunner | SshRunner:
+    if not hostname:
+        return LocalRunner(dry_run=dry_run, verbose=verbose)
+    return SshRunner(hostname=hostname, remote_user=remote_user,
+            dry_run=dry_run, verbose=verbose)
