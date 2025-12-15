@@ -97,6 +97,37 @@ class SshRunner:
         if self.verbose:
             print(f"copied remote file {src} to local {dst}")
         sftp.close()
+    
+    def put_dir(self,
+            src: Path,
+            dst: Path,
+            ref: Path | None,
+            dry_run: bool = False,
+            ) -> CommandResult:
+        """Copies directory content to a remote destination."""
+        args = ["rsync"]
+        if self.verbose:
+            args.append("-avxc")
+        else:
+            args.append("-axc")
+        if dry_run or self.dry_run:
+            args.append("--dry-run")
+        args.append(f"{src}/")
+        args.append(f"{self.remote_user}@{self.hostname}:{dst}/")
+        if ref is not None:
+            args.append(f"--copy-dest={ref}/")
+        r = subprocess.run(args, capture_output=True, encoding="utf-8")
+        result = CommandResult(
+                ok = r.returncode == 0,
+                stdout = r.stdout,
+                stderr = r.stderr,
+                )
+        if self.verbose:
+            print(f"cmd result {r.returncode} from {' '.join(args)}")
+        if not result.ok:
+            print(f"cmd error: {result.stderr}")
+            # XXX better error reporting needed
+        return result
 
 
 class LocalRunner:
@@ -174,6 +205,36 @@ class LocalRunner:
         shutil.copy2(real_src, dst)
         if self.verbose:
             print(f"copied {real_src} to {dst}")
+    
+    def put_dir(self,
+            src: Path,
+            dst: Path,
+            ref: Path | None,
+            dry_run: bool = False,
+            ) -> CommandResult:
+        """Copies directory content to a remote destination."""
+        args = ["cp", "-R"]
+        if self.verbose:
+            args.append("-v")
+        else:
+            args.append("-axc")
+        if dry_run or self.dry_run:
+            print(f"would run {' '.join(args)}")
+            return CommandResult(ok=True, stdout="", stderr="")
+        args.append(f"{src}/")
+        args.append(f"{dst}/")
+        r = subprocess.run(args, capture_output=True, encoding="utf-8")
+        result = CommandResult(
+                ok = r.returncode == 0,
+                stdout = r.stdout,
+                stderr = r.stderr,
+                )
+        if self.verbose:
+            print(f"cmd result {r.returncode} from {' '.join(args)}")
+        if not result.ok:
+            print(f"cmd error: {result.stderr}")
+            # XXX better error reporting needed
+        return result
 
 
 def get_command_runner(
