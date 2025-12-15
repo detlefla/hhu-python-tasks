@@ -68,7 +68,6 @@ def copy_files(
 
 
 def _test() -> None:
-    import sys
     results = copy_files(
             Path(sys.argv[1]),
             [Path(arg) for arg in sys.argv[2:]],
