@@ -248,13 +248,17 @@ def runserver(
             subcmd = "runserver_plus"
         else:
             subcmd = "runserver"
-    subprocess.run([
+    cmd = [
             "uv", "run",
             "--project", options.project_dir,
             "--python", options.python_version,
             options.config.management_command,
             subcmd, str(port),
-            ], check=True)
+            ]
+    if dry_run:
+        print(f"would execute: {' '.join(str(c) for c in cmd)}")
+        return
+    subprocess.run(cmd, check=True)
 
 
 @app.command

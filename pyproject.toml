@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "hhu-python-tasks"
-version = "0.20.1"
+version = "0.20.3"
 description = "invoke-specific tasks for Python projects"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -41,6 +41,7 @@ dependencies = [
     "uuid-extension>=0.2.0",
     "uuid-utils",
     "wheel-filename",
+#    "wheel-getter",
     "xdg-base-dirs",
 ]
 
