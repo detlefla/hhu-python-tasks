@@ -146,6 +146,7 @@ def deploy(
         runner = SshRunner(hostname=host, remote_user=user,
                 dry_run=dry_run, verbose=verbose)
         remote_deployment = True
+        local_runner = LocalRunner(dry_run=dry_run, verbose=verbose)
     else:
         if target is None:
             target_dir = options.base_dir / "versions"
@@ -154,8 +155,9 @@ def deploy(
         deploy_dir = target_dir / deploy_id
     
         runner = LocalRunner(dry_run=dry_run, verbose=verbose)
+        local_runner = runner
     
-    runner.run(["wheel-getter", "--directory", staging_dir])
+    local_runner.run(["wheel-getter", "--directory", staging_dir])
     runner.run(["mkdir", "-p", target_dir])
     runner.run(["uv", "init", "--bare", "--python", options.python_version, deploy_dir])
     runner.run(["uv", "python", "pin", "--project", deploy_dir, options.python_version])
@@ -202,7 +204,7 @@ def new_branch(
         verbose: bool = False,
         debug: bool = False,
         ) -> None:
-    """Create a new branch for git checkout"""
+    """Create a new branch for git checkout – not implemented"""
     options = get_options(
             project = project,
             directory = directory,
@@ -221,11 +223,12 @@ def runserver(
         directory: Path | None = None,
         config_file: Path | None = None,
         python_version: str | None = None,
+        dev: bool = True,
         dry_run: bool = False,
         verbose: bool = False,
         debug: bool = False,
         ) -> None:
-    """Deploy application to local directory or remote host"""
+    """Run Django development server"""
     options = get_options(
             project = project,
             directory = directory,
@@ -241,12 +244,16 @@ def runserver(
             port = 8099
         else:
             port = 8000 + project_id
+        if dev:
+            subcmd = "runserver_plus"
+        else:
+            subcmd = "runserver"
     subprocess.run([
             "uv", "run",
             "--project", options.project_dir,
             "--python", options.python_version,
             options.config.management_command,
-            "runserver_plus", str(port),
+            subcmd, str(port),
             ], check=True)
 
 
@@ -260,7 +267,7 @@ def release(
         verbose: bool = False,
         debug: bool = False,
         ) -> None:
-    """Deploy application to local directory or remote host"""
+    """Make new release – not implemented"""
     options = get_options(
             project = project,
             directory = directory,
@@ -272,4 +279,3 @@ def release(
             )
 
 # def run(MODE, SCRIPT, PARAMS, [--name=NAME])
-# def runserver([--name=NAME])

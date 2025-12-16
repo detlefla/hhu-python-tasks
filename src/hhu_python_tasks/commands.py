@@ -110,10 +110,13 @@ class SshRunner:
             args.append("-avxc")
         else:
             args.append("-axc")
-        if dry_run or self.dry_run:
-            args.append("--dry-run")
+#        if dry_run or self.dry_run:
+#            args.append("--dry-run")
         args.append(f"{src}/")
         args.append(f"{self.remote_user}@{self.hostname}:{dst}/")
+        if dry_run or self.dry_run:
+            print(f"would execute locally: {' '.join(args)}")
+            return CommandResult(ok=True, stdout="", stderr="")
         if ref is not None:
             args.append(f"--copy-dest={ref}/")
         r = subprocess.run(args, capture_output=True, encoding="utf-8")
@@ -216,13 +219,11 @@ class LocalRunner:
         args = ["cp", "-R"]
         if self.verbose:
             args.append("-v")
-        else:
-            args.append("-axc")
+        args.append(f"{src}/")
+        args.append(f"{dst.parent}/")
         if dry_run or self.dry_run:
             print(f"would run {' '.join(args)}")
             return CommandResult(ok=True, stdout="", stderr="")
-        args.append(f"{src}/")
-        args.append(f"{dst}/")
         r = subprocess.run(args, capture_output=True, encoding="utf-8")
         result = CommandResult(
                 ok = r.returncode == 0,
