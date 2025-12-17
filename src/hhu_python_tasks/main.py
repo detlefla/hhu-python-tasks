@@ -255,10 +255,11 @@ def runserver(
             options.config.management_command,
             subcmd, str(port),
             ]
+    str_cmd = [str(c) for c in cmd]
     if dry_run:
-        print(f"would execute: {' '.join(str(c) for c in cmd)}")
+        print(f"would execute: {' '.join(str_cmd)}")
         return
-    subprocess.run(cmd, check=True)
+    subprocess.run(str_cmd, check=True)
 
 
 @app.command
