@@ -127,7 +127,6 @@ def deploy(
     # print(f"{options.base_dir=}, {deploy_id=}, {hi_name=}")
     staging_dir = options.base_dir / "stage" / deploy_id
     
-    remote_deployment = False
     runner: SshRunner | LocalRunner
     if target and target.startswith("@"):
         targets = options.config.targets
@@ -145,7 +144,6 @@ def deploy(
         deploy_dir = target_dir / deploy_id
         runner = SshRunner(hostname=host, remote_user=user,
                 dry_run=dry_run, verbose=verbose)
-        remote_deployment = True
         local_runner = LocalRunner(dry_run=dry_run, verbose=verbose)
     else:
         if target is None:
@@ -163,9 +161,10 @@ def deploy(
     runner.run(["uv", "python", "pin", "--project", deploy_dir, options.python_version])
     local_wheels = staging_dir / "wheels"
     remote_wheels = deploy_dir / "wheels"
+    ref_wheels = target_dir / "active" / "wheels"
     runner.run(["mkdir", remote_wheels])  # XXX within previous mkdir??
     
-    runner.put_dir(local_wheels, remote_wheels, target_dir / "active")
+    runner.put_dir(local_wheels, remote_wheels, ref=ref_wheels)
     
     main_pkg = f"{options.config.main_package}[prod]"
     runner.run(["uv", "add", "--project", deploy_dir, main_pkg, "--no-index",
